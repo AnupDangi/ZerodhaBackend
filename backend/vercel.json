@@ -1,0 +1,36 @@
+{
+    "version": 2,
+    "builds": [
+      {
+        "src": "server.js",
+        "use": "@vercel/node"
+      }
+    ],
+    "routes": [
+      {
+        "src": "/auth/signup",
+        "headers": {
+          "Access-Control-Allow-Origin": "https://zerodha-clone-ykwn.vercel.app",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization",
+          "Access-Control-Allow-Credentials": "true"
+        },
+        "methods": ["GET", "POST", "OPTIONS"]
+      },
+      {
+        "src": "/auth/.*",
+        "headers": {
+          "Access-Control-Allow-Origin": "https://zerodha-clone-ykwn.vercel.app",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization",
+          "Access-Control-Allow-Credentials": "true"
+        },
+        "methods": ["GET", "POST", "OPTIONS"]
+      },
+      {
+        "src": "/(.*)",
+        "dest": "/server.js"
+      }
+    ]
+  }
+  
