@@ -14,7 +14,10 @@ const cookieConfig = {
 // --- SIGNUP ---
 exports.Signup = async (req, res) => {
   try {
-    const { email, password, username } = req.body;
+    const email = req.body.email.trim();
+    const password = req.body.password.trim();
+    const username = req.body.username.trim();
+
     if (!email || !password || !username) {
       return res.status(400).json({ success: false, message: "Missing fields" });
     }
@@ -43,24 +46,23 @@ exports.Signup = async (req, res) => {
   }
 };
 
+
 // --- LOGIN ---
 exports.Login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = req.body.email.trim();
+    const password = req.body.password.trim();
+
     if (!email || !password) {
       return res.status(400).json({ success: false, message: "Missing fields" });
     }
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({ success: false, message: "Email doesnot exists" });
+      return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    console.log("LOGIN: Trying user", user.email);
-  console.log("Input password:", password);
-  console.log("Stored hash:", user.password);
-  console.log("Password valid?", isPasswordValid);
 
     if (!isPasswordValid) {
       return res.status(401).json({ success: false, message: "Invalid credentials" });
@@ -79,6 +81,7 @@ exports.Login = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 
 // --- VERIFY USER ---
 exports.userVerification = async (req, res) => {
