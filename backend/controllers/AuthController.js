@@ -46,31 +46,45 @@ exports.Signup = async (req, res) => {
   }
 };
 
-
-// --- LOGIN ---
+// --- LOGIN with enhanced debugging ---
 exports.Login = async (req, res) => {
   try {
-    const email = req.body.email.trim();
-    const password = req.body.password.trim();
-
+    console.log("Login attempt - Raw body:", req.body);
+    
+    const email = req.body.email?.trim();
+    const password = req.body.password?.trim();
+    
+    console.log("Login attempt - Cleaned:", { email, password: password ? "***" : "empty" });
+    
     if (!email || !password) {
+      console.log("Missing fields - email:", !!email, "password:", !!password);
       return res.status(400).json({ success: false, message: "Missing fields" });
     }
 
+    console.log("Searching for user with email:", email);
     const user = await User.findOne({ email });
+    
     if (!user) {
+      console.log("User not found for email:", email);
       return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
-
+    
+    console.log("User found:", { id: user._id, email: user.email, hasPassword: !!user.password });
+    console.log("Stored password hash:", user.password);
+    console.log("Input password:", password);
+    
     const isPasswordValid = await bcrypt.compare(password, user.password);
-
+    console.log("Password comparison result:", isPasswordValid);
+    
     if (!isPasswordValid) {
+      console.log("Password validation failed");
       return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
 
     const token = createSecretToken(user._id);
     res.cookie("token", token, cookieConfig);
-
+    
+    console.log("Login successful for user:", user.email);
     res.json({
       success: true,
       message: "Logged in successfully",
