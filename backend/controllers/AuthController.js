@@ -11,109 +11,189 @@ const cookieConfig = {
   maxAge: 24 * 60 * 60 * 1000, // 1 day
 };
 
+// Helper function to sanitize input
+const sanitizeInput = (input) => {
+  return input ? input.toString().trim() : '';
+};
+
 // --- SIGNUP ---
 exports.Signup = async (req, res) => {
   try {
-    const email = req.body.email.trim();
-    const password = req.body.password.trim();
-    const username = req.body.username.trim();
+    // Sanitize inputs consistently
+    const email = sanitizeInput(req.body.email);
+    const password = sanitizeInput(req.body.password);
+    const username = sanitizeInput(req.body.username);
+
+    console.log("Signup attempt:", { email, username, hasPassword: !!password });
 
     if (!email || !password || !username) {
-      return res.status(400).json({ success: false, message: "Missing fields" });
+      return res.status(400).json({ 
+        success: false, 
+        message: "All fields are required" 
+      });
     }
 
-    const existingUser = await User.findOne({ email });
+    // Check if user already exists (case-insensitive)
+    const existingUser = await User.findOne({ 
+      email: { $regex: new RegExp(`^${email}$`, 'i') }
+    });
+    
     if (existingUser) {
-      return res.status(409).json({ success: false, message: "User already exists" });
+      return res.status(409).json({ 
+        success: false, 
+        message: "User already exists with this email" 
+      });
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    // Hash password
+    const saltRounds = 12;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    
+    console.log("Creating user with hashed password length:", hashedPassword.length);
 
-    const user = await User.create({ email, password: hashedPassword, username });
+    // Create user
+    const user = await User.create({ 
+      email: email.toLowerCase(), // Store email in lowercase
+      password: hashedPassword, 
+      username 
+    });
 
+    // Generate token
     const token = createSecretToken(user._id);
+    
+    // Set cookie
     res.cookie("token", token, cookieConfig);
+
+    console.log("User created successfully:", user.email);
 
     res.status(201).json({
       success: true,
-      message: "Signed up successfully",
-      user: { id: user._id, username: user.username }
+      message: "Account created successfully",
+      user: { 
+        id: user._id, 
+        username: user.username,
+        email: user.email 
+      }
     });
+
   } catch (err) {
     console.error("Signup error:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({ 
+      success: false, 
+      message: "Server error during signup" 
+    });
   }
 };
 
-// --- LOGIN with enhanced debugging ---
+// --- LOGIN ---
 exports.Login = async (req, res) => {
   try {
-    console.log("Login attempt - Raw body:", req.body);
-    
-    const email = req.body.email?.trim();
-    const password = req.body.password?.trim();
-    
-    console.log("Login attempt - Cleaned:", { email, password: password ? "***" : "empty" });
-    
+    // Sanitize inputs consistently
+    const email = sanitizeInput(req.body.email);
+    const password = sanitizeInput(req.body.password);
+
+    console.log("Login attempt:", { email, hasPassword: !!password });
+
     if (!email || !password) {
-      console.log("Missing fields - email:", !!email, "password:", !!password);
-      return res.status(400).json({ success: false, message: "Missing fields" });
+      return res.status(400).json({ 
+        success: false, 
+        message: "Email and password are required" 
+      });
     }
 
-    console.log("Searching for user with email:", email);
-    const user = await User.findOne({ email });
-    
+    // Find user (case-insensitive)
+    const user = await User.findOne({ 
+      email: { $regex: new RegExp(`^${email}$`, 'i') }
+    });
+
     if (!user) {
-      console.log("User not found for email:", email);
-      return res.status(401).json({ success: false, message: "Invalid credentials" });
-    }
-    
-    console.log("User found:", { id: user._id, email: user.email, hasPassword: !!user.password });
-    console.log("Stored password hash:", user.password);
-    console.log("Input password:", password);
-    
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    console.log("Password comparison result:", isPasswordValid);
-    
-    if (!isPasswordValid) {
-      console.log("Password validation failed");
-      return res.status(401).json({ success: false, message: "Invalid credentials" });
+      console.log("User not found:", email);
+      return res.status(401).json({ 
+        success: false, 
+        message: "Invalid email or password" 
+      });
     }
 
-    const token = createSecretToken(user._id);
-    res.cookie("token", token, cookieConfig);
+    console.log("User found, comparing passwords...");
     
-    console.log("Login successful for user:", user.email);
+    // Compare password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    
+    console.log("Password comparison result:", isPasswordValid);
+
+    if (!isPasswordValid) {
+      console.log("Password validation failed for:", email);
+      return res.status(401).json({ 
+        success: false, 
+        message: "Invalid email or password" 
+      });
+    }
+
+    // Generate token
+    const token = createSecretToken(user._id);
+    
+    // Set cookie
+    res.cookie("token", token, cookieConfig);
+
+    console.log("Login successful for:", user.email);
+
     res.json({
       success: true,
       message: "Logged in successfully",
-      user: { id: user._id, username: user.username }
+      user: { 
+        id: user._id, 
+        username: user.username,
+        email: user.email 
+      },
+      token // Include token in response for localStorage
     });
+
   } catch (err) {
     console.error("Login error:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({ 
+      success: false, 
+      message: "Server error during login" 
+    });
   }
 };
-
 
 // --- VERIFY USER ---
 exports.userVerification = async (req, res) => {
   try {
     const token = req.cookies.token;
-    if (!token) return res.status(401).json({ status: false, message: "No token" });
-
-    const decoded = jwt.verify(token, process.env.TOKEN_KEY);
-    const user = await User.findById(decoded.id).select("username");
-
-    if (!user) {
-      return res.status(404).json({ status: false, message: "User not found" });
+    
+    if (!token) {
+      return res.status(401).json({ 
+        status: false, 
+        message: "No authentication token" 
+      });
     }
 
-    res.json({ status: true, user: { id: user._id, username: user.username } });
+    const decoded = jwt.verify(token, process.env.TOKEN_KEY);
+    const user = await User.findById(decoded.id).select("username email");
+    
+    if (!user) {
+      return res.status(404).json({ 
+        status: false, 
+        message: "User not found" 
+      });
+    }
+
+    res.json({ 
+      status: true, 
+      user: { 
+        id: user._id, 
+        username: user.username,
+        email: user.email 
+      } 
+    });
+
   } catch (err) {
     console.error("Verification error:", err);
-    res.status(401).json({ status: false, message: "Invalid token" });
+    res.status(401).json({ 
+      status: false, 
+      message: "Invalid or expired token" 
+    });
   }
 };
 
@@ -123,6 +203,8 @@ exports.logout = (req, res) => {
     ...cookieConfig,
     maxAge: 0,
   });
-
-  res.json({ success: true, message: "Logged out successfully" });
+  res.json({ 
+    success: true, 
+    message: "Logged out successfully" 
+  });
 };
