@@ -51,7 +51,7 @@ exports.Signup = async (req, res) => {
     const user = await User.create({ email, password: hashedPassword, username });
     // console.log("User created with ID:", user._id);
 
-    // const token = createSecretToken(user._id);
+    const token = createSecretToken(user._id);
     res.cookie("token", token, cookieConfig);
 
     console.log("=== SIGNUP SUCCESS ===");
