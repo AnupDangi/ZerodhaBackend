@@ -14,11 +14,11 @@ const cookieParser = require("cookie-parser");
 
 app.use(
   cors({
-    // origin: ["http://localhost:5173", "http://localhost:5174"],
-    origin: [
-      "https://zerodha-clone-ykwn.vercel.app", // frontend
-      "https://dashboard-lemon-phi-34.vercel.app",
-    ],
+    origin: ["http://localhost:5173", "http://localhost:5174"],
+    // origin: [
+    //   "https://zerodha-clone-ykwn.vercel.app", // frontend
+    //   "https://dashboard-lemon-phi-34.vercel.app",
+    // ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -48,11 +48,11 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use("/auth", authRoute);
 
 app.get("/", (req, res) => {
   res.send("This is root");
 });
+app.use("/auth", authRoute);
 
 app.get("/allHoldings", async (req, res) => {
   let allHoldings = await HoldingsModel.find({});

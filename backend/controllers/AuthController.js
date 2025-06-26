@@ -25,12 +25,12 @@ exports.Signup = async (req, res) => {
     const password = req.body.password?.trim();
     const username = req.body.username?.trim();
     
-    console.log("Processed inputs:", {
-      email,
-      username,
-      password: password, // Show actual password for debugging
-      passwordLength: password?.length
-    });
+    // console.log("Processed inputs:", {
+    //   email,
+    //   username,
+    //   password: password, // Show actual password for debugging
+    //   passwordLength: password?.length
+    // });
 
     if (!email || !password || !username) {
       console.log("Missing fields validation failed");
@@ -43,15 +43,15 @@ exports.Signup = async (req, res) => {
       return res.status(409).json({ success: false, message: "User already exists" });
     }
 
-    console.log("About to hash password:", password);
+    // console.log("About to hash password:", password);
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
     console.log("Password hashed successfully, hash starts with:", hashedPassword.substring(0, 20) + "...");
 
     const user = await User.create({ email, password: hashedPassword, username });
-    console.log("User created with ID:", user._id);
+    // console.log("User created with ID:", user._id);
 
-    const token = createSecretToken(user._id);
+    // const token = createSecretToken(user._id);
     res.cookie("token", token, cookieConfig);
 
     console.log("=== SIGNUP SUCCESS ===");
@@ -95,12 +95,12 @@ exports.Login = async (req, res) => {
       });
     }
 
-    console.log("User found, comparing passwords...");
+    // console.log("User found, comparing passwords...");
     
     // Compare password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     
-    console.log("Password comparison result:", isPasswordValid);
+    // console.log("Password comparison result:", isPasswordValid);
 
     if (!isPasswordValid) {
       console.log("Password validation failed for:", email);
