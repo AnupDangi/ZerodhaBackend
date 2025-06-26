@@ -15,73 +15,54 @@ const cookieConfig = {
 const sanitizeInput = (input) => {
   return input ? input.toString().trim() : '';
 };
-
-// --- SIGNUP ---
+// --- SIGNUP WITH DETAILED LOGGING ---
 exports.Signup = async (req, res) => {
   try {
-    // Sanitize inputs consistently
-    const email = sanitizeInput(req.body.email);
-    const password = sanitizeInput(req.body.password);
-    const username = sanitizeInput(req.body.username);
-
-    console.log("Signup attempt:", { email, username, hasPassword: !!password });
+    console.log("=== SIGNUP DEBUG ===");
+    console.log("Raw request body:", req.body);
+    
+    const email = req.body.email?.trim();
+    const password = req.body.password?.trim();
+    const username = req.body.username?.trim();
+    
+    console.log("Processed inputs:", {
+      email,
+      username,
+      password: password, // Show actual password for debugging
+      passwordLength: password?.length
+    });
 
     if (!email || !password || !username) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "All fields are required" 
-      });
+      console.log("Missing fields validation failed");
+      return res.status(400).json({ success: false, message: "Missing fields" });
     }
 
-    // Check if user already exists (case-insensitive)
-    const existingUser = await User.findOne({ 
-      email: { $regex: new RegExp(`^${email}$`, 'i') }
-    });
-    
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(409).json({ 
-        success: false, 
-        message: "User already exists with this email" 
-      });
+      console.log("User already exists");
+      return res.status(409).json({ success: false, message: "User already exists" });
     }
 
-    // Hash password
-    const saltRounds = 12;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-    
-    console.log("Creating user with hashed password length:", hashedPassword.length);
+    console.log("About to hash password:", password);
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    console.log("Password hashed successfully, hash starts with:", hashedPassword.substring(0, 20) + "...");
 
-    // Create user
-    const user = await User.create({ 
-      email: email.toLowerCase(), // Store email in lowercase
-      password: hashedPassword, 
-      username 
-    });
+    const user = await User.create({ email, password: hashedPassword, username });
+    console.log("User created with ID:", user._id);
 
-    // Generate token
     const token = createSecretToken(user._id);
-    
-    // Set cookie
     res.cookie("token", token, cookieConfig);
 
-    console.log("User created successfully:", user.email);
-
+    console.log("=== SIGNUP SUCCESS ===");
     res.status(201).json({
       success: true,
-      message: "Account created successfully",
-      user: { 
-        id: user._id, 
-        username: user.username,
-        email: user.email 
-      }
+      message: "Signed up successfully",
+      user: { id: user._id, username: user.username }
     });
-
   } catch (err) {
     console.error("Signup error:", err);
-    res.status(500).json({ 
-      success: false, 
-      message: "Server error during signup" 
-    });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
